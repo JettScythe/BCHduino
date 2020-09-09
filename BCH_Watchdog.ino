@@ -1,12 +1,6 @@
-/**************************************************************************************************/
-// BCH Watchdog
+// BCHduino
 // Description: 
-//   Bot that monitorizes your addresses and alerts you if a movement of funds is detected.
-// Disclaimer: This is beta software!
-// Created on: 20 may 2020
-// Last modified date: 20 may 2020
-// Version: 0.1
-/**************************************************************************************************/
+// Monitor your address(es) and activates (x) if address(es) receive funds. WIP
 
 /* Libraries */
 
@@ -16,9 +10,7 @@
 #include <ESP8266WiFiMulti.h>
 #include <ESP8266HTTPClient.h>
 #include <ArduinoJson.h> //Use V6
-#include <utlgbotlib.h>
 
-/**************************************************************************************************/
 
 
 // SHA1 Fingerprint for Bitcoin.com URL.
@@ -26,49 +18,36 @@ const char fingerprint[] PROGMEM= "29 0D E5 3A 2A FA 7C 48 FA CB 4D 3D 97 02 2A 
 
 String serverName = "http://rest.bitcoin.com/v2/address/details/";
 //Put here your address or addresses to track them
-String addresses[] = {"bitcoincash:qzftvp2d0ketld8uc2y9fryg45e4ll74my9yyxx9kg", "bitcoincash:qzs02v05l7qs5s24srqju498qu55dwuj0cx5ehjm2c", "bitcoincash:ppm39e48x3sjynxlqmhy3pcnhl90spk34ssje8jg6x"};
+String addresses[] = {"bitcoincash:qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"};
 
 
 // WiFi Parameters
-#define WIFI_SSID "YOUR_SSID"
-#define WIFI_PASS "YOUR_PASSWORD"
+#define WIFI_SSID "wifi"
+#define WIFI_PASS "password"
 #define MAX_CONN_FAIL 50
 #define MAX_LENGTH_WIFI_SSID 31
 #define MAX_LENGTH_WIFI_PASS 63
 
-// Telegram Bot Token (Get from Botfather)
-#define TLG_TOKEN "XXXXXXXX:XXXXXXXXXXXXXXXXXXXXXXXXXXX"
-
-// Enable Bot debug level (0 - None; 1 - Bot Level; 2 - Bot+HTTPS Level)
-#define DEBUG_LEVEL_UTLGBOT 0
 
   
 ESP8266WiFiMulti WiFiMulti;
 
-/**************************************************************************************************/
 
 /* Functions Prototypes */
 
 void wifi_init_stat(void);
 bool wifi_handle_connection(void);
 
-/**************************************************************************************************/
 
 /* Globals */
 
-// Create Bot object
-uTLGBot Bot(TLG_TOKEN);
-DynamicJsonDocument myArray(512); //Here will be stored you addresses with each balance
-char* chat_ID = NULL;
+DynamicJsonDocument myArray(512); // Here will be stored your addresses with each balance
 
-/**************************************************************************************************/
 
 /* Main Function */
 
 void setup(void)
 {
-    // Enable Bot debug
-    Bot.set_debug(DEBUG_LEVEL_UTLGBOT);
 
     // Initialize Serial
     Serial.begin(115200);
@@ -80,7 +59,7 @@ void setup(void)
     Serial.println("Waiting for WiFi connection.");
     while(!wifi_handle_connection())
     {
-        Serial.println(".");
+        Serial.print(".");
         delay(1000);
     }
     
@@ -93,17 +72,17 @@ void setup(void)
     HTTPClient http;
 
     //Here, we will fill myArray with the data: addresses and bavlances
-    Serial.print("[HTTPS] begin...\n");
+    //Serial.print("[HTTPS] begin...\n");
     for (byte idx = 0; idx < sizeof(addresses) / sizeof(addresses[0]); idx++){
       if (http.begin(client, serverName + addresses[idx])) {  // HTTPS
-        Serial.print("[HTTPS] GET...\n");
-        Serial.println(serverName + addresses[idx]);
+        //Serial.print("[HTTPS] GET...\n");
+        //Serial.println(serverName + addresses[idx]);
         // start connection and send HTTP header
         int httpCode = http.GET();
         // httpCode will be negative on error
         if (httpCode > 0) {
           // HTTP header has been send and Server response header has been handled
-          Serial.printf("[HTTPS] GET... code: %d\n", httpCode);
+          //Serial.printf("[HTTPS] GET... code: %d\n", httpCode);
           // file found at server
           if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
             String payload = http.getString();
@@ -115,8 +94,8 @@ void setup(void)
               return;
               }
             long balance = doc["balanceSat"];
-            Serial.print("Balance: ");
-            Serial.println(balance);
+            //Serial.print("Balance: ");
+            //Serial.println(balance);
             myArray[addresses[idx]] = balance;
           }
         } else {
@@ -147,21 +126,7 @@ void loop()
     StaticJsonDocument<64> filter;
     filter["balanceSat"] = true;
     filter["unconfirmedBalanceSat"] = true;
-
-    //If the ID of the Telegram chat is not available, just send any message to the bot
-    if (chat_ID == NULL) {   
-      Bot.getMe();
-      Bot.getUpdates();
-      while(Bot.received_msg.chat.id[0] == '\0'){
-        Serial.println("Send a message to start the watchdog!");
-        delay(5000);
-        Bot.getUpdates();
-      } 
-      chat_ID = Bot.received_msg.chat.id;
-      Bot.disconnect();
-      Serial.print("Chat ID is ");
-      Serial.println(chat_ID);
-    }   
+ 
     
     WiFiClient client;
     HTTPClient http;
@@ -170,13 +135,13 @@ void loop()
     JsonObject obj = myArray.as<JsonObject>();
     for (JsonPair p : obj){
       if (http.begin(client, serverName + p.key().c_str())); {  // HTTPS
-        Serial.print("[HTTPS] GET...\n");
+        //Serial.print("[HTTPS] GET...\n");
         // start connection and send HTTP header
         int httpCode = http.GET();
         // httpCode will be negative on error
         if (httpCode > 0) {
           // HTTP header has been send and Server response header has been handled
-          Serial.printf("[HTTPS] GET... code: %d\n", httpCode);
+          //Serial.printf("[HTTPS] GET... code: %d\n", httpCode);
           // file found at server
           if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
             String payload = http.getString();
@@ -203,14 +168,8 @@ void loop()
                   char URL[128];
                   strcpy(URL, "https://explorer.bitcoin.com/bch/address/");
                   strcat(URL, p.key().c_str());
-                  Bot.getMe();
-                  Bot.getUpdates();
-                  Bot.sendMessage(Bot.received_msg.chat.id, "ALERT! Movement of funds detected");
-                  Bot.sendMessage(Bot.received_msg.chat.id, "Check it out now!");
-                  Bot.sendMessage(Bot.received_msg.chat.id, URL);
                   myArray[p.key()] = current_balance;
                   yield();
-                  Bot.disconnect();
                 }
               }
           }
@@ -222,10 +181,9 @@ void loop()
       delay(2000);
       }
   }   
-    delay(30000);  //Refresh the balance every 30 seconds
+    delay(600000);  //Refresh the balance every hour
 }
 
-/**************************************************************************************************/
 
 /* Functions */
 
@@ -243,7 +201,6 @@ void wifi_init_stat(void)
     Serial.println("TCP-IP adapter successfuly initialized.");
 }
 
-/**************************************************************************************************/
 
 /* WiFi Change Event Handler */
 
@@ -280,5 +237,3 @@ bool wifi_handle_connection(void)
         return true;
     }
 }
-
-/**************************************************************************************************/
