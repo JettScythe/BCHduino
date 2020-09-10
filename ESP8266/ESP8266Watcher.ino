@@ -52,6 +52,8 @@ void setup(void)
     // Initialize Serial
     Serial.begin(115200);
 
+    pinMode(LED_BUILTIN, OUTPUT);
+
     // Initialize WiFi station connection
     wifi_init_stat();
 
@@ -183,7 +185,7 @@ void loop()
       delay(2000);
       }
   }   
-    delay(600000);  //Refresh the balance every hour
+    delay(3000);  //Refresh the balance every 3 seconds
 }
 
 
