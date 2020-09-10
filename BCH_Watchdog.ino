@@ -169,6 +169,8 @@ void loop()
                   strcpy(URL, "https://explorer.bitcoin.com/bch/address/");
                   strcat(URL, p.key().c_str());
                   myArray[p.key()] = current_balance;
+                  digitalWrite(LED_BUILTIN,!digitalRead(LED_BUILTIN));
+
                   yield();
                 }
               }
