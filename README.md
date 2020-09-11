@@ -8,6 +8,7 @@ Requirements
 -Compatable ESP8266/ESP32 board. I'm using the NodeMCU dev boards.  
 -Arduino IDE  
 -ArduinoJSON (V6, not compatible with V5): https://arduinojson.org/ 
+
 -Servo
 
 -ONLY FOR BOT PROJECT {
